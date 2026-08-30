@@ -1,0 +1,16 @@
+[project]
+name = "malloclab"
+version = "0.1.0"
+description = "Verified Memory Allocator with Fragmentation Bounds"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "ruff", "bandit"]
+
+[project.scripts]
+malloclab = "malloclab:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
