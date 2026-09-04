@@ -56,6 +56,10 @@ class Allocator:
         self.heap = bytearray(heap_size)
         self.free_list_head = NO_PTR  # Offset of first free block
         self.disable_coalescing = disable_coalescing
+        # Integer offsets are easy to forge, so keep an independent ownership
+        # record instead of trusting bytes immediately before a supplied pointer.
+        self._issued_pointers: set[int] = set()
+        self._live_pointers: set[int] = set()
         
         # Initialize the heap with one large free block
         initial_block = BlockHeader(heap_size, NO_PTR, NO_PTR, True)
@@ -189,7 +193,10 @@ class Allocator:
                     header.is_free = False
                     self._write_header(current, header)
                 
-                return self._payload_offset(current)
+                payload_ptr = self._payload_offset(current)
+                self._issued_pointers.add(payload_ptr)
+                self._live_pointers.add(payload_ptr)
+                return payload_ptr
             
             current = header.next
         
@@ -200,17 +207,24 @@ class Allocator:
         """Free a previously allocated block."""
         if payload_ptr is None:
             return
+
+        if not isinstance(payload_ptr, int) or isinstance(payload_ptr, bool):
+            raise TypeError("payload pointer must be an integer offset or None")
+        if payload_ptr not in self._issued_pointers:
+            raise ValueError("pointer was not returned by this allocator")
+        if payload_ptr not in self._live_pointers:
+            return  # Preserve the documented idempotent double-free behavior.
         
         block_offset = self._block_offset(payload_ptr)
         header = self._read_header(block_offset)
-        
         if header.is_free:
-            return  # Double free - silently ignore
+            raise RuntimeError("allocator metadata disagrees with live-pointer state")
         
         # Mark as free and add to free list
         header.is_free = True
         self._write_header(block_offset, header)
         self._add_to_free_list(block_offset)
+        self._live_pointers.remove(payload_ptr)
         
         # Coalesce with adjacent free blocks
         if not self.disable_coalescing:

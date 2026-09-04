@@ -1,11 +1,11 @@
 # Testing
 
-## Unit Tests (21 tests)
+## Unit Tests (24 tests)
 
 | Test Class | Tests | Coverage |
 |------------|-------|----------|
 | TestBlockHeader | 2 | Pack/unpack roundtrip |
-| TestAllocator | 9 | Basic malloc/free operations |
+| TestAllocator | 12 | Basic operations and invalid-pointer rejection |
 | TestCoalescing | 2 | Adjacent block merging |
 | TestFragmentation | 2 | Fragmentation bound |
 | TestNoDoubleAlloc | 1 | P1 property |

@@ -35,7 +35,7 @@ Zero-dependency explicit-free-list allocator with:
 │                   Heap (bytearray)                  │
 │  ┌────────┬────────┬────────┬────────┬────────────┐ │
 │  │ Header │ Payload│ Header │ Payload│    ...     │ │
-│  │(16 B)  │ (var)  │(16 B)  │ (var)  │            │ │
+│  │(32 B)  │ (var)  │(32 B)  │ (var)  │            │ │
 │  └────────┴────────┴────────┴────────┴────────────┘ │
 │       ↑                  ↑                          │
 │  free_list ←─────────→ free_list                    │
@@ -43,7 +43,7 @@ Zero-dependency explicit-free-list allocator with:
 └─────────────────────────────────────────────────────┘
 ```
 
-Block header (16 bytes):
+Block header (32 bytes):
 ```
 ┌──────────────┬──────────────┬──────────────┬──────────────┐
 │ size (8 B)   │ prev (8 B)   │ next (8 B)   │ free (1 B)   │
@@ -65,6 +65,10 @@ Block header (16 bytes):
 
 - Threat model pre-implementation
 - Strict size validation (no negative, no zero, no >heap_size)
+- Fail-closed `free()` validation: only exact pointers previously issued by the
+  same allocator are accepted; forged, interior, and out-of-range offsets do
+  not reach heap metadata
+- Idempotent handling for repeated frees of a legitimately issued pointer
 - No eval/subprocess/network/file I/O
 - Bounded heap size (configurable, default 1 MiB)
 - Deterministic seeded RNG for reproducible verification

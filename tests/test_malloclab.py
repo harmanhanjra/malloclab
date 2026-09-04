@@ -2,6 +2,8 @@
 
 import random
 
+import pytest
+
 from malloclab import ALIGNMENT, HEADER_SIZE, Allocator, verify_harness
 
 
@@ -75,6 +77,34 @@ class TestAllocator:
         ptr = alloc.malloc(256)
         alloc.free(ptr)
         alloc.free(ptr)  # Should not crash
+
+    def test_free_rejects_interior_pointer_without_corrupting_heap(self):
+        alloc = Allocator(4096)
+        ptr = alloc.malloc(256)
+        before = bytes(alloc.heap)
+
+        with pytest.raises(ValueError, match="not returned"):
+            alloc.free(ptr + ALIGNMENT)
+
+        assert bytes(alloc.heap) == before
+        assert ptr in alloc._live_pointers
+
+    def test_free_rejects_out_of_range_pointer_without_corrupting_heap(self):
+        alloc = Allocator(4096)
+        ptr = alloc.malloc(64)
+        before = bytes(alloc.heap)
+
+        with pytest.raises(ValueError, match="not returned"):
+            alloc.free(alloc.heap_size + HEADER_SIZE)
+
+        assert bytes(alloc.heap) == before
+        alloc.free(ptr)
+
+    def test_free_rejects_non_integer_pointer(self):
+        alloc = Allocator(4096)
+
+        with pytest.raises(TypeError, match="integer offset"):
+            alloc.free("32")
     
     def test_alloc_write_alloc_pattern(self):
         alloc = Allocator(4096)
